@@ -7,32 +7,56 @@ tvs_data = pd.read_csv("calcResult.csv", delimiter=';')
 temp = tvs_data["T[C]"].to_list()
 resistance = tvs_data["R nom[Ohm]"].to_list()
 
-# polynomial fit for temperature vs. resistance
-tvs_fit = np.polynomial.polynomial.Polynomial.fit(temp, resistance, 7)
-new_temp_list = [x / 4 for x in range(0, 500)]
-new_resistance_list = [tvs_fit(t) for t in new_temp_list]
-
 # find voltage across the ADC reader
-voltage = [(r / (10000 + r)) * 5 for r in new_resistance_list]
+voltage = [(r / (10000 + r)) * 5 for r in resistance]
 
 # convert voltage to adc value
 adc_const = 5.0 / int(str(780000), 16)
 adc = [x / adc_const for x in voltage]
 
-shifted_adc = [x - adc[-1] for x in adc]
+plt.figure()
+plt.plot(adc, temp)
+plt.title("Temperature vs. ADC fitted graph")
+plt.xlabel("ADC")
+plt.ylabel("Temperature")
+plt.show()
 
-temp_fit = np.polynomial.polynomial.Polynomial.fit(shifted_adc, new_temp_list, 3)
+# shift adc to start at 0
+shifted_adc = [a - adc[-1] for a in adc]
 
-step_size = int(pow(2, 23) / 124)
-new_adc = [shifted_adc[i] for i in range(0, len(shifted_adc) - 1, step_size)]
-new_temp = [temp_fit(adc) for adc in new_adc]
+adc_fit = np.polynomial.polynomial.Polynomial.fit(shifted_adc, temp, 7)
 
-print(len(shifted_adc))
-print(new_adc)
-print(new_temp)
+plt.figure()
+# plot the original ocv graph
+plt.plot(shifted_adc, temp, label="Original graph")
+# plot the fitted ocv graph
+plt.plot(shifted_adc, adc_fit(np.array(shifted_adc)), label="Fitted graph")
+plt.legend(loc="upper right")
+plt.title("Temperature vs. Shifted fitted graph")
+plt.xlabel("ADC")
+plt.ylabel("Temperature")
+plt.show()
 
-# plot graph for visualization
-'''plt.figure()
-plt.plot(shifted_adc, new_temp_list)
-plt.title("Temperature graph")
-plt.show()'''
+step_size = int((adc[0] - adc[-1]) / 1023)
+final_adc = [i for i in range(int(shifted_adc[0]), int(shifted_adc[-1]), -1 * step_size)]
+final_temp = [adc_fit(a) for a in final_adc]
+
+plt.figure()
+plt.plot(final_adc, final_temp)
+plt.title("Temperature vs. ADC graph (final)")
+plt.xlabel("ADC")
+plt.ylabel("Temperature")
+plt.show()
+
+print(len(final_adc))
+print(final_adc)
+print(final_temp)
+
+data = {
+    "ADC": final_adc,
+    "Temperature (C)": final_temp
+}
+
+df = pd.DataFrame(data)
+
+df.to_csv("adc_to_temp_table", index=False)
