@@ -50,7 +50,7 @@ shifted_adc = [a - fitted_adc[-1] for a in fitted_adc]
 
 # reverse lists so that adc starts at 0
 shifted_adc.reverse()
-temp.reverse()
+fitted_temp.reverse()
 
 data = {
     "ADC": shifted_adc,
